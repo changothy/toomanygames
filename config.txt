@@ -1,0 +1,6 @@
+[API]
+API_key = YOUR_STEAM_API_KEY
+steamid = YOUR_STEAM_ID
+
+[Games]
+include_free_games = 1
