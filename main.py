@@ -19,8 +19,8 @@ api_request_getpricelist = "https://store.steampowered.com/api/appdetails?filter
 ## Print text explaning what this is all about ##
 print("You have too many games. Let's show some stats.")
 
-## Confirm accounts ##
-print("(Make sure you update accounts.json to connect to services that apply to you.)")
+## Confirm accounts - TBA ##
+#print("(Make sure you update accounts.json to connect to services that apply to you.)")
 
 ## Takes a request URL and calls an API. Returns response
 def get_response(request_url):
