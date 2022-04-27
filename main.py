@@ -1,6 +1,10 @@
+### Too many games ###
+
 import requests, json
-import locale
 import configparser
+import locale
+import datetime
+from howlongtobeatpy import HowLongToBeat #https://github.com/ScrappyCocco/HowLongToBeat-PythonAPI
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -9,12 +13,11 @@ config.read("config.txt")
 STEAM_API_KEY = config.get("API", "API_key")
 STEAM_ID = config.get("API", "steamid")
 
-### Too many games ###
-
 api_request_getgamelist = "https://api.steampowered.com/ISteamApps/GetAppList/v2/?"  ## Retrieves all games in the Steam DB
 api_request_getusergames = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + STEAM_API_KEY + "&steamid=" + STEAM_ID + "&include_played_free_games=1&include_appinfo=1&format=json"  ## Retrieves games owned by a user
 api_request_getpricelist = "https://store.steampowered.com/api/appdetails?filters=price_overview&appids="  ## Retrieves price information on games (takes a CSV list of appids)
-#  http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?appid=320&key=STEAM_API_KEY&steamid=STEAM_ID
+api_request_getplayersummaries = "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + STEAM_API_KEY + "&steamids=" + STEAM_ID
+# http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?appid=320&key=STEAM_API_KEY&steamid=STEAM_ID
 
 ## Print text explaning what this is all about ##
 print("You have too many games. Let's show some stats.")
@@ -39,19 +42,37 @@ def split_list(list, n):
     for i in range(0, len(list), n):
         yield list[i:i+n]
 
+def calculateTotalCompletionTime(gamelist):
+    print("Calculating total completion time of games in library...")
+    totalCompletionTime = 0
+    for game in gamelist:
+        results = HowLongToBeat().search(game["name"])
+        if results_list is not None and len(results_list) > 0:
+            best_element = max(results_list, key=lambda element: element.similarity)
+        totalCompletionTime =+ HowLongToBeatEntry.gameplay_completionist
+    return totalCompletionTime
 
+
+## Get user's account info
+response = get_response(api_request_getplayersummaries)
+user_data = get_response_json_dict(response).get("response").get("players")
+account_created = datetime.datetime.fromtimestamp([d["timecreated"] for d in user_data][0])
+account_age = str(round((datetime.datetime.now() - account_created)/datetime.timedelta(days=1)/365.2425, 2))
+print("Account created:", account_created, "(" + account_age + " years ago)")
+
+## Get user's games
 response = get_response(api_request_getusergames)
 #print(response.status_code)
 #print(response.json())
-user_data = get_response_json_dict(response).get("response")
+user_game_data = get_response_json_dict(response).get("response")
 
 ## Print results ##
 ## Count games
-game_count = user_data.get("game_count")
+game_count = user_game_data.get("game_count")
 print("You have", game_count, "games (including free games).")
 
 ## Calculate total account value
-owned_games_list = user_data.get("games")
+owned_games_list = user_game_data.get("games")
 owned_games_appids_list = list(split_list([owned_games_appids['appid'] for owned_games_appids in owned_games_list], 500))
 owned_games_pricelist_dict = {}
 
@@ -86,7 +107,7 @@ print("Total market value of Steam Library (including current discounts): " + lo
 ## Highlight games that have been played for less than an hour
 less_played_games_list = []
 total_played_hours = 0 ## Also get total played hours while we're at it
-for dict_entry in user_data.get("games"):
+for dict_entry in user_game_data.get("games"):
     total_played_hours = total_played_hours + dict_entry.get("playtime_forever")
     if dict_entry.get("playtime_forever") < 60:
         less_played_games_list.append(dict_entry.get("appid"))
@@ -96,7 +117,7 @@ print("You have", len(less_played_games_list), "games with a play time of less t
 print("You've played a total of", round(total_played_hours/60), "hours in your Steam library.")
 
 ## Show 10 most played games, with hours as a percentage of game time
-games_list_playtime_sorted = sorted(user_data.get("games"), key=lambda d: d["playtime_forever"], reverse=True)
+games_list_playtime_sorted = sorted(user_game_data.get("games"), key=lambda d: d["playtime_forever"], reverse=True)
 most_played_games_list = games_list_playtime_sorted[0:10]
 print("Your 10 most played games are:")
 count = 0
